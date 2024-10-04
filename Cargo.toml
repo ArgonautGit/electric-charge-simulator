@@ -1,0 +1,9 @@
+[package]
+name = "electric"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+eframe = "0.29.0"
+egui = "0.29.0"
+env_logger = "0.11.5"
