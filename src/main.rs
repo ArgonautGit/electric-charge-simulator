@@ -36,7 +36,7 @@ impl eframe::App for MyApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        custom_window_frame(ctx, "egui with custom frame", |ui| {
+        custom_window_frame(ctx, "Electric Charge Simulator", |ui| {
             ui.set_min_size(Vec2::new(400.0, 400.0));
             ui.horizontal(|ui| {
                 ui.label("egui theme:");
