@@ -4,80 +4,67 @@ pub mod entry {
 
     use std::sync::{LazyLock, Mutex};
 
+    const CHARGE_SIZE: f32 = 10.0;
+
     static SOLVER_MUTEX: LazyLock<Mutex<Solver>> = LazyLock::new(|| Mutex::new(Solver::new()));
-    static INITIAL_POS: LazyLock<Mutex<f32>> = LazyLock::new(|| Mutex::new(100.0));
-    static CHARGE_ID: LazyLock<Mutex<u32>> = LazyLock::new(|| Mutex::new(0));
-    static DT: LazyLock<Mutex<f32>> = LazyLock::new(|| Mutex::new(0.0));
 
     pub fn entry(ui: &mut egui::Ui, ctx: &egui::Context) {
         let mut solver = SOLVER_MUTEX.lock().unwrap();
-        let mut initial_pos = INITIAL_POS.lock().unwrap();
-        let mut charge_id = CHARGE_ID.lock().unwrap();
-        let mut dt = DT.lock().unwrap();
+        // let mut initial_pos = INITIAL_POS.lock().unwrap();
+        // let mut charge_id = CHARGE_ID.lock().unwrap();
 
         if button::add_charge(ui).clicked() {
-            let mut charge = Box::new(Charge::new(0.1, 0.1));
-            charge.body.position.0 = *initial_pos;
-            charge.body.position.1 = *initial_pos;
-            charge.body.velocity.0 = 30.0;
+            if solver.charge_list.len() == 0 {
+                let mut large_charge = Charge::new(0.25, 1E3);
+                large_charge.body.position.0 = 200.0;
+                large_charge.body.position.1 = 200.0;
 
-            *initial_pos += 15.0;
+                solver.add_charge(large_charge);
+            }
 
-            let mut charge2 = Box::new(Charge::new(0.1, 0.1));
-            charge2.body.position.0 = *initial_pos; 
-            charge2.body.position.1 = 150.0;
-            charge2.body.velocity.0 = 0.0;
-            charge2.body.mass = 100000000.0;
+            let mut charge = Charge::new(-0.005, 1.0);
 
-            solver.charge1 = *charge;
-            solver.charge2 = *charge2;
+            charge.body.position.0 = 200.0;
+            charge.body.position.1 = 150.0;
+            charge.body.velocity.0 = -500.0;
 
-            *charge_id = 2;
+
+            solver.add_charge(charge);
         }
 
-        if *charge_id == 2 {
-            solver.solve(*dt);
-            *dt += 0.001;
-            super::draw::circle_filled(
-                &ui,
-                egui::pos2(
-                    solver.charge1.body.position.0.to_owned(),
-                    solver.charge1.body.position.1.to_owned(),
-                ),
-                10.0,
-                egui::Color32::BLUE,
-            );
-            super::draw::circle_filled(
-                &ui,
-                egui::pos2(
-                    solver.charge2.body.position.0.to_owned(),
-                    solver.charge2.body.position.1.to_owned(),
-                ),
-                10.0,
-                egui::Color32::RED,
-            );
-            
-            let x1 = solver.charge1.body.position.0;
-            let x2 = solver.charge2.body.position.0;
-            let y1 = solver.charge1.body.position.1;
-            let y2 = solver.charge2.body.position.1;
-            super::draw::line(&ui, x1, y1, solver.charge1.body.force_angle());
-            super::draw::line(&ui, x2, y2, solver.charge2.body.force_angle());    
+        if button::clear_charges(ui).clicked() {
+            solver.charge_list.clear();
+        }
 
+        if solver.charge_list.len() > 0 { // if *charge_id == 2 {
+            solver.solve(ui.input(|i| i.stable_dt));
             ctx.request_repaint();
         }
 
-        // for charge in &solver.charge_list {
-        //     let x = charge.body.position.0;
-        //     let y = charge.body.position.1;
+        // Draw each charge.
+        for charge in &solver.charge_list {
+            let x = charge.body.position.0;
+            let y = charge.body.position.1;
 
-        //     super::draw::circle_filled(&ui, egui::pos2(x, y), 20.0, egui::Color32::BLUE);
-        // }
+            super::draw::circle_filled(&ui, egui::pos2(x, y), CHARGE_SIZE, egui::Color32::BLUE);
+            for other in &solver.charge_list {
+                if charge.body.id != other.body.id {
+                    let x = charge.body.position.0;
+                    let y = charge.body.position.1;
+                    let angle = charge.body.acceleration_angle(&other.body);
+                    super::draw::line(&ui, x, y, angle);
+                }
+            }
+        }
     }
 
     mod button {
         pub fn add_charge(ui: &mut egui::Ui) -> egui::Response {
             ui.button("Add Charge")
+        }
+
+        pub fn clear_charges(ui: &mut egui::Ui) -> egui::Response {
+            ui.button("Clear Charges")
         }
     }
 }
